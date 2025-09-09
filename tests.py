@@ -38,10 +38,15 @@ class TestGetFileContent(unittest.TestCase):
         self.assertTrue(len(content) > 10000)
         self.assertIn('truncated at 10000 characters', content)
 
-        
+ # python
 if __name__ == "__main__":
-    unittest.main(exit=False)
+    import unittest
+    loader = unittest.TestLoader()
+    suite = unittest.TestSuite()
+    # include local tests
+    suite.addTests(loader.loadTestsFromModule(__import__(__name__)))
+    # include calculator tests
+    suite.addTests(loader.discover(start_dir="calculator", pattern="test*.py"))
+    runner = unittest.TextTestRunner()
+    runner.run(suite)       
 
-    print(get_file_content("calculator", "main.py"))
-    print(get_file_content("calculator", "pkg/calculator.py"))
-    print(get_file_content("calculator", "/bin/cat"))  # should start with "Error:"

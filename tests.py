@@ -1,10 +1,11 @@
+from os import writev
 import unittest
 
 
 # python
 from functions.get_files_info import get_files_info
 from functions.get_file_content import get_file_content
-
+from functions.run_python_file import run_python_file
 
 class TestGetFileInfo(unittest.TestCase):
     def test_lists_pkg_dir(self):
@@ -38,6 +39,27 @@ class TestGetFileContent(unittest.TestCase):
         self.assertTrue(len(content) > 10000)
         self.assertIn('truncated at 10000 characters', content)
 
+class TestRunPythonFile(unittest.TestCase):
+    def test_rejects_outside_working_dir(self):
+        msg = run_python_file("calculator", "../main.py")
+        self.assertTrue(msg.startswith("Error: Cannot execute"), msg)
+
+    def test_missing_python_file(self):
+        msg = run_python_file("calculator", "nope.py")
+        self.assertEqual('Error: File "nope.py" not found.', msg)
+
+    def test_rejects_non_python_file(self):
+        msg = run_python_file("calculator", "lorem.txt")
+        self.assertEqual('Error: "lorem.txt" is not a Python file.', msg)
+
+    def test_runs_python_and_formats_output(self):
+        out = run_python_file("calculator", "main.py")
+        self.assertIn("STDOUT:", out)
+        if "Traceback" in out or "Error" in out:
+            self.assertIs("STDERR:", out)
+
+
+
  # python
 if __name__ == "__main__":
     import unittest
@@ -50,3 +72,10 @@ if __name__ == "__main__":
     runner = unittest.TextTestRunner()
     runner.run(suite)       
 
+  # Ensure these get printed for the CLI check
+    from functions.run_python_file import run_python_file
+    print(run_python_file("calculator", "main.py"))
+    print(run_python_file("calculator", "main.py", ["3 + 5"]))
+    print(run_python_file("calculator", "tests.py"))
+    print(run_python_file("calculator", "../main.py"))
+    print(run_python_file("calculator", "nonexistent.py"))

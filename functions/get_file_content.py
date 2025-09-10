@@ -8,6 +8,7 @@ def get_file_content(working_directory, file_path):
         wd_abs_path = os.path.abspath(working_directory)
         target_abs = os.path.abspath(os.path.join(working_directory, file_path))
 
+        print(f"DEBUG path: {target_abs}")
         if (
             not target_abs.startswith(wd_abs_path + os.sep)
             and target_abs != wd_abs_path
@@ -17,7 +18,7 @@ def get_file_content(working_directory, file_path):
         if not os.path.isfile(target_abs):
             return f'Error: File is not found or is not a regular file: "{file_path}"'
 
-        with open(target_abs, "r") as f:
+        with open(target_abs, "r", encoding="utf-8") as f:
             content = f.read(MAX_CHARS)
             remainder = f.read(1)
 

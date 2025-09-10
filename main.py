@@ -3,11 +3,14 @@ import os
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from pydantic_core import from_json
 
 from functions.get_files_info import schema_get_files_info
 from functions.write_file import schema_write_file
 from functions.get_file_content import schema_get_file_content
 from functions.run_python_file import schema_run_python_file
+from functions.call_function import call_function
+
 
 load_dotenv()
 api_key = os.environ.get("GEMINI_API_KEY")
@@ -54,9 +57,19 @@ response = client.models.generate_content(
 
 if response.function_calls:
     for call in response.function_calls:
-        print(f"Calling function: {call.name}({call.args})")
+        function_call_result = call_function(call, verbose=bool(verbose))
+        # ensure the response exists
+        fr = function_call_result.parts[0].function_response.response
+        result_text = fr.get("result") if isinstance(fr, dict) else fr 
+        
+        if fr is None:
+            raise RuntimeError("Function call returned no response")
+        if verbose:
+            print(f"-> {result_text}")
+        else:
+            print(result_text)
 else:
-    print(f"{response.text}")
+    print(response.text)
 
 if verbose:
     print(f"User prompt: {user_prompt}")

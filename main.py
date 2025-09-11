@@ -32,11 +32,14 @@ When a user asks a question or makes a request, make a function call plan. You c
 All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
 """
 
-messages = types.Content(
-    role="user",
-    parts=[
-        types.Part(text=user_prompt),
-    ],
+messages = []
+messages.append(
+    types.Content(
+        role="user",
+        parts=[
+            types.Part(text=user_prompt),
+        ],
+    )
 )
 
 available_functions = types.Tool(
@@ -47,31 +50,49 @@ available_functions = types.Tool(
         schema_run_python_file,
     ]
 )
-response = client.models.generate_content(
-    model="gemini-2.0-flash-001",
-    contents=messages,
-    config=types.GenerateContentConfig(
-        tools=[available_functions], system_instruction=system_prompt
-    ),
-)
 
-if response.function_calls:
-    for call in response.function_calls:
-        function_call_result = call_function(call, verbose=bool(verbose))
-        # ensure the response exists
-        fr = function_call_result.parts[0].function_response.response
-        result_text = fr.get("result") if isinstance(fr, dict) else fr 
-        
-        if fr is None:
-            raise RuntimeError("Function call returned no response")
-        if verbose:
-            print(f"-> {result_text}")
+current_iteration = 0
+try:
+    while current_iteration < 20:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-001",
+            contents=messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions], system_instruction=system_prompt
+            ),
+        )
+        for candidate in response.candidates:
+            messages.append(candidate.content)
+
+        if response.function_calls:
+            for call in response.function_calls:
+                function_call_result = call_function(call, verbose=bool(verbose))
+                # ensure the response exists
+                fr = function_call_result.parts[0].function_response.response
+
+                messages.append(function_call_result)
+
+                result_text = fr.get("result") if isinstance(fr, dict) else fr
+
+                if fr is None:
+                    raise RuntimeError("Function call returned no response")
+                if verbose:
+                    print(f"-> {result_text}")
+                else:
+                    print(result_text)
+            if verbose:
+                print(f"User prompt: {user_prompt}")
+                print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+                print(
+                    f"Response tokens: {response.usage_metadata.candidates_token_count}"
+                )
+
+            current_iteration += 1
+            continue
         else:
-            print(result_text)
-else:
-    print(response.text)
+            print(response.text)
+            break
 
-if verbose:
-    print(f"User prompt: {user_prompt}")
-    print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-    print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+
+except Exception as e:
+    print(f"Error: {e}")
